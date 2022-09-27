@@ -38,7 +38,7 @@ jobs:
           command: |
             printenv WORKFLOW_ID
 
-            curl -H "Circle-Token: $CIRCLE_TOKEN" "https://circleci.com/api/v2/workflow/${WORKFLOW_ID}/job > jobs.json
+            curl -H "Circle-Token: $CIRCLE_TOKEN" "https://circleci.com/api/v2/workflow/${WORKFLOW_ID}/job" > jobs.json
             APPROVAL_JOB_ID=$(jq -r '.items | map(select(.name == "<< parameters.job-name >>" and .type == "approval")) | .[0].id' jobs.json)
             echo "export APPROVAL_JOB_ID='${APPROVAL_JOB_ID}'" >> $BASH_ENV
       - run:
