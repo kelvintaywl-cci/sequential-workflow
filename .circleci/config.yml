@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  flow: kelvintaywl/control-flow@0.1.0
+  flow: kelvintaywl/control-flow@0.1
 
 executors:
   docker-sm:
