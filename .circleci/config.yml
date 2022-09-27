@@ -27,23 +27,40 @@ jobs:
       name: docker-sm
       img: circleci/circleci-cli:latest
     steps:
-      - run: |
-          WORKFLOW_ID=$(curl -H "Circle-Token: $CIRCLE_TOKEN" https://circleci.com/api/v2/pipeline/<< pipeline.id >>/workflow | jq -r '.items | map(select(.name == "<< parameters.workflow-name >>")) | .[0].id')
-          echo $WORKFLOW_ID
+      - run:
+          name: Find Workflow ID for << parameters.workflow-name >>
+          command: |
+            curl -H "Circle-Token: $CIRCLE_TOKEN" https://circleci.com/api/v2/pipeline/<< pipeline.id >>/workflow > workflows.json
+            WORKFLOW_ID=$(jq -r '.items | map(select(.name == "<< parameters.workflow-name >>")) | .[0].id' workflows.json)
+            echo "export WORKFLOW_ID='${WORKFLOW_ID}'" >> $BASH_ENV
+      - run:
+          name: Find Job ID for << parameters.job-name >>
+          command: |
+            printenv WORKFLOW_ID
+
+            curl -H "Circle-Token: $CIRCLE_TOKEN" "https://circleci.com/api/v2/workflow/${WORKFLOW_ID}/job > jobs.json
+            APPROVAL_JOB_ID=$(jq -r '.items | map(select(.name == "<< parameters.job-name >>" and .type == "approval")) | .[0].id' jobs.json)
+            echo "export APPROVAL_JOB_ID='${APPROVAL_JOB_ID}'" >> $BASH_ENV
+      - run:
+          name: Approve job
+          command: |
+            printenv APPROVAL_JOB_ID
+
+            curl -X POST -H "Circle-Token: $CIRCLE_TOKEN" "https://circleci.com/api/v2/workflow/${WORKFLOW_ID}/approve/${APPROVAL_JOB_ID}" | jq .
  
- workflows:
-   aaa:
-     jobs:
-       - noop
-       - approve-workflow:
-           workflow-name: bbb
-           job-name: hold
-           requires:
-             - noop
-   bbb:
-     jobs:
-       - hold:
-           type: approval
-       - noop:
-           requires:
-             - hold
+workflows:
+  aaa:
+    jobs:
+      - noop
+      - approve-workflow:
+          workflow-name: bbb
+          job-name: start
+          requires:
+            - noop
+  bbb:
+    jobs:
+      - start:
+          type: approval
+      - noop:
+          requires:
+            - start
