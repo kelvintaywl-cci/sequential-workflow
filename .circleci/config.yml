@@ -1,0 +1,49 @@
+version: 2.1
+
+executors:
+  docker-sm:
+    parameters:
+      img:
+        type: string
+        default: cimg/base:current
+    docker:
+      - image: << parameters.img >>
+    resource_class: small
+
+jobs:
+  noop:
+    executor: docker-sm
+    steps:
+      - checkout
+  approve-workflow:
+    parameters:
+      workflow-name:
+        type: string
+        description: workflow name
+      job-name:
+        type: string
+        description: name of approval job in workflow
+    executor:
+      name: docker-sm
+      img: circleci/circleci-cli:latest
+    steps:
+      - run: |
+          WORKFLOW_ID=$(curl -H "Circle-Token: $CIRCLE_TOKEN" https://circleci.com/api/v2/pipeline/<< pipeline.id >>/workflow | jq -r '.items | map(select(.name == "<< parameters.workflow-name >>")) | .[0].id')
+          echo $WORKFLOW_ID
+ 
+ workflows:
+   aaa:
+     jobs:
+       - noop
+       - approve-workflow:
+           workflow-name: bbb
+           job-name: hold
+           requires:
+             - noop
+   bbb:
+     jobs:
+       - hold:
+           type: approval
+       - noop:
+           requires:
+             - hold
